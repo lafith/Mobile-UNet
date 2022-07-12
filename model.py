@@ -1,4 +1,4 @@
-# Mobile UNet and Inverse Residual Block
+# Mobile UNet and Inverted Residual Block
 # Author: Lafith Mattara
 # Date: July 2022
 
@@ -64,12 +64,13 @@ class InvertedResidualBlock(nn.Module):
 
 class MobileUNet(nn.Module):
     """
-    Modified UNet with inverse residual block and depthwise seperable convolution
+    Modified UNet with inverted residual block and depthwise seperable convolution
     """
 
     def __init__(self):
         super(MobileUNet, self).__init__()
 
+        # encoding arm
         self.conv3x3 = self.depthwise_conv(3, 32, p=1, s=2)
         self.irb_bottleneck1 = self.irb_bottleneck(32, 16, 1, 1, 1)
         self.irb_bottleneck2 = self.irb_bottleneck(16, 24, 2, 2, 6)
@@ -79,7 +80,7 @@ class MobileUNet(nn.Module):
         self.irb_bottleneck6 = self.irb_bottleneck(96, 160, 3, 2, 6)
         self.irb_bottleneck7 = self.irb_bottleneck(160, 320, 1, 1, 6)
         self.conv1x1_encode = nn.Conv2d(320, 1280, kernel_size=1, stride=1)
-
+        # decoding arm
         self.D_irb1 = self.irb_bottleneck(1280, 96, 1, 2, 6, True)
         self.D_irb2 = self.irb_bottleneck(96, 32, 1, 2, 6, True)
         self.D_irb3 = self.irb_bottleneck(32, 24, 1, 2, 6, True)
@@ -88,6 +89,10 @@ class MobileUNet(nn.Module):
         self.conv1x1_decode = nn.Conv2d(16, 3, kernel_size=1, stride=1)
 
     def depthwise_conv(self, in_c, out_c, k=3, s=1, p=0):
+        """
+        optimized convolution by combining depthwise convolution and
+        pointwise convolution.
+        """
         conv = nn.Sequential(
             nn.Conv2d(in_c, in_c, kernel_size=k, padding=p, groups=in_c, stride=s),
             nn.BatchNorm2d(num_features=in_c),
@@ -97,6 +102,9 @@ class MobileUNet(nn.Module):
         return conv
     
     def irb_bottleneck(self, in_c, out_c, n, s, t, d=False):
+        """
+        create a series of inverted residual blocks.
+        """
         convs = []
         xx = InvertedResidualBlock(in_c, out_c, s, t, deconvolve=d)
         convs.append(xx)
@@ -108,6 +116,7 @@ class MobileUNet(nn.Module):
         return conv
     
     def get_count(self, model):
+        # simple function to get the count of parameters in a model.
         num = sum(p.numel() for p in model.parameters() if p.requires_grad)
         return num
     
@@ -124,7 +133,7 @@ class MobileUNet(nn.Module):
         x8 = self.irb_bottleneck7(x7) #(320,7,7)
         x9 = self.conv1x1_encode(x8) #(1280,7,7) s5
 
-        # Right arm / Decoding arm
+        # Right arm / Decoding arm with skip connections
         d1 = self.D_irb1(x9) + x6
         d2 = self.D_irb2(d1) + x4
         d3 = self.D_irb3(d2) + x3

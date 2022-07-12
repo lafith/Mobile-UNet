@@ -1,6 +1,6 @@
 # Mobile UNet
 
-Pytorch implementation of Mobile UNet. It is a modification of UNet with Inverted residual blocks and Depthwise seperable convolution.
+PyTorch implementation of Mobile UNet. It is a modification of UNet with Inverted residual blocks and Depthwise seperable convolution.
 Mobile-UNet is optimized for attaining real-time image segmentation.
 
 ## References
