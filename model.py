@@ -50,13 +50,15 @@ class InvertedResidualBlock(nn.Module):
                 nn.Conv2d(ex_c, self.out_c, 1, 1, 0, bias=False),
                 nn.BatchNorm2d(self.out_c),
             )
+        self.conv1x1 = nn.Conv2d(self.in_c, self.out_c, 1, 1, 0, bias=False)
+
             
 
     def forward(self, x):
         if self.use_skip_connection:
             out = self.conv(x)
             if self.in_c != self.out_c:
-                x = nn.Conv2d(self.in_c, self.out_c, 1, 1, 0, bias=False)(x)
+                x = self.conv1x1(x)
             return x+out
         else:
             return self.conv(x)
@@ -86,6 +88,7 @@ class MobileUNet(nn.Module):
         self.D_irb3 = self.irb_bottleneck(32, 24, 1, 2, 6, True)
         self.D_irb4 = self.irb_bottleneck(24, 16, 1, 2, 6, True)
         self.DConv4x4 = nn.ConvTranspose2d(16,16,4,2,1,groups=16, bias=False)
+        # Final layer: output channel number can be changed as per the usecase
         self.conv1x1_decode = nn.Conv2d(16, 3, kernel_size=1, stride=1)
 
     def depthwise_conv(self, in_c, out_c, k=3, s=1, p=0):
